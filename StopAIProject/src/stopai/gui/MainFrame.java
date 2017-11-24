@@ -3,27 +3,24 @@
  */
 package stopai.gui;
 
+import stopai.model.*;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.Rectangle;
-import java.awt.Shape;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.ImageObserver;
-import java.text.AttributedCharacterIterator;
+import java.util.ArrayList;
+import java.util.Random;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.border.LineBorder;
+
+import stopai.model.AIentity;
 
 /**
  * @author TCHUENTE
@@ -47,19 +44,13 @@ public class MainFrame extends JFrame {
 	private final int LINE = 1;
 	private final int CIRCLE = 2;
 
-	private JLabel testCaselabel = new JLabel("Num of Test Case");
-	private JTextField txtTestCase = new JTextField(8);
-
-	private JLabel numAilabel = new JLabel("Num of Ai");
-	private JTextField txtnumAi = new JTextField(8);
-
-	private JLabel numComChanels = new JLabel("Num of Communication Chanels");
-	private JTextField txtnumComChanels = new JTextField(8);
-
 	private JButton btnCapture = new JButton("Start The Program");
 
 	private JPanel panelNorh = new JPanel();
 	private JPanel panelSouth = new JPanel();
+
+	private Graph<AIentity, String> graph = null;
+	private ArrayList<AIentity> ListofAI = null;
 
 	/**
 	 * @param title
@@ -122,6 +113,7 @@ public class MainFrame extends JFrame {
 					System.exit(0);
 				}
 
+				// Could have done better by putting this repeating segment of code in a function.
 				while (numberCase < MIN_NUMBER_TESTCASE
 						|| numberCase > MAX_NUMBER_TESTCASE) {
 					JOptionPane.showMessageDialog(null,
@@ -148,6 +140,42 @@ public class MainFrame extends JFrame {
 							MIN_NUMBER_AI));
 				}
 
+				// Draw AI on the panel and insert them into our Graph.
+				CanvasPanel canvaspanel = new CanvasPanel();
+				panelSouth.setLayout(new FlowLayout(FlowLayout.CENTER));
+				panelSouth.add(canvaspanel);
+				canvaspanel.setHeight(panelSouth.getHeight()-1);
+				canvaspanel.setWidth(panelSouth.getWidth()-1);
+				int h = canvaspanel.getHeight();
+				int w = canvaspanel.getWidth();
+				
+				graph = new Graph<AIentity, String>();
+				ListofAI = new ArrayList<AIentity>();
+				
+				Random rand = new Random();
+				for (int i = 0; i < numberofAi; i++) {
+
+					int x = (rand.nextInt(w)) + 50;
+					int y = (rand.nextInt(h)) + 20;
+					
+					while( (100 > x || x > w/2) || ( 100 > y || y > h/2)){
+						 x = (rand.nextInt(w)) + 50;
+						 y = (rand.nextInt(h)) + 4;
+					}
+
+					System.out.print(x + "," + y);
+					System.out.println();
+
+					AIentity Ai = new AIentity(x, y, i);
+					Vertex<AIentity> newVertex = new stopai.model.Vertex<AIentity>();
+					newVertex.setElement(Ai);
+					graph.insertVertex(newVertex);
+					ListofAI.add(i,Ai);
+					
+					canvaspanel.paintComponent(getGraphics(),CIRCLE, Ai.getxPost(),
+					 Ai.getyPost(), 25, 25);
+				}
+
 				maxNumberofChanels = ((numberofAi * (numberofAi - 1)) / 2 - 1);
 				numberofChannels = Integer.parseInt(JOptionPane
 						.showInputDialog(
@@ -167,7 +195,35 @@ public class MainFrame extends JFrame {
 											+ maxNumberofChanels,
 									MIN_NUMBER_CHANELS));
 				}
-
+				
+				int i = 0;
+				while(i < numberofChannels){
+					
+					String ij = JOptionPane.showInputDialog("Please provide the ith amd the jth that are connected. like 1,2. if 1 is connected to 2");					
+					String [] res = ij.split(",");
+					
+					int posi = Integer.parseInt(res [0]);
+					int posj = Integer.parseInt(res [1]);
+					while(posi < 1 || posi > ListofAI.size() || posj < 1 || posj > ListofAI.size()){
+						 ij = JOptionPane.showInputDialog("value must be between 1 and " + ListofAI.size());					
+						  res = ij.split(",");
+						 posi = Integer.parseInt(res [0]);
+						 posj = Integer.parseInt(res [1]);
+					}
+					
+					AIentity vi = ListofAI.get(posi-1);
+					AIentity vj = ListofAI.get(posj-1);
+					
+					int xi = vi.getxPost();
+					int yi = vi.getyPost();
+					
+					int xj = vj.getxPost();
+					int yj = vj.getyPost();
+					
+					canvaspanel.paintComponent(getGraphics(),LINE, xi+17,
+							yi+17, xj+17, yj+17);
+					i++;
+				}
 			}
 		});
 	}
@@ -177,17 +233,20 @@ public class MainFrame extends JFrame {
 	 * @author TCHUENTE Panel to draw our AI object.
 	 *
 	 */
-	
+
 	class CanvasPanel extends JPanel {
 
 		private int width = 0;
 		private int height = 0;
-		
+
+		// private Graphics g;
+
 		public CanvasPanel() {
 			width = getWidth();
 			height = getHeight();
+
 		}
-		
+
 		public int getWidth() {
 			return width;
 		}
@@ -204,24 +263,25 @@ public class MainFrame extends JFrame {
 			this.height = height;
 		}
 
-		public void paintComponent(Graphics g, int shape, int xPos, int yPos,int xPos2, int yPos2) {
+		protected void paintComponent(Graphics g, int shape, int xPos,
+				int yPos, int xPos2, int yPos2) {
+			super.paintComponents(g);
 			switch (shape) {
 			case LINE:
-                 g.setColor(Color.BLACK);
-                 g.drawLine(xPos, yPos, xPos2, yPos2);
+				g.setColor(Color.BLACK);
+				g.drawLine(xPos, yPos, xPos2, yPos2);
 				break;
-				
+
 			case CIRCLE:
-				 g.setColor(Color.BLUE);
-                 g.drawOval(xPos, yPos, 2, 2);
+				g.setColor(Color.BLUE);
+				g.drawOval(xPos, yPos, xPos2, yPos2);
 				break;
-				
+
 			default:
 				break;
 			}
-         repaint();
+			repaint();
 		}
-		
 	}
 
 }
